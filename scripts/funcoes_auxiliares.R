@@ -94,24 +94,21 @@ calcular_metricas_fold <- function(predicoes) {
 }
 
 # Exportação de tabelas ----
-exportar_tabelas <- function(lista_tabelas, nome_planilha, casas_decimais = 4, salvar_csv = TRUE) {
+exportar_tabelas <- function(lista_tabelas, nome_planilha, casas_decimais = 4, salvar_csv = TRUE, colunas_sem_arredondar = character()) {
   pasta <- here::here("resultados", "tabelas")
   
-  # O Excel limita o nome de cada aba a 31 caracteres
   names(lista_tabelas) <- substr(names(lista_tabelas), 1, 31)
   
   tabelas_formatadas <- list()
   
-  # Itera sobre cada tabela da lista de forma direta
   for (nome in names(lista_tabelas)) {
     tabela <- as.data.frame(lista_tabelas[[nome]])
     
-    # Formata cada coluna sem funções aninhadas ou tidyeval complexo
     for (coluna in names(tabela)) {
       valores <- tabela[[coluna]]
       if (is.list(valores)) {
         tabela[[coluna]] <- sapply(valores, function(v) paste(v, collapse = ", "))
-      } else if (is.numeric(valores)) {
+      } else if (is.numeric(valores) && !coluna %in% colunas_sem_arredondar) {
         tabela[[coluna]] <- round(valores, casas_decimais)
       }
     }

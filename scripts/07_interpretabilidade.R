@@ -83,7 +83,14 @@ tabela_or <- tidy(modelo_glm, exponentiate = TRUE, conf.int = TRUE) |>
 print(tabela_or, n = Inf)
 
 # Figura 1: Forest Plot das Razões de Chances (excluindo categorias "Sem informação" para limpeza visual, ou mantendo todas)
+nota_or <- if ("cs_sexoSem informação" %in% tabela_or$termo) {
+  "Sexo sem informação foi omitido do gráfico por instabilidade da estimativa.\nO termo consta na tabela completa."
+} else {
+  NULL
+}
+
 dados_forest <- tabela_or |>
+  filter(termo != "cs_sexoSem informação") |>
   mutate(
     termo_limpo = termo |>
       str_replace("^nu_idade_n$", "Idade (por ano adicional)") |>
@@ -104,15 +111,14 @@ grafico_or <- ggplot(dados_forest, aes(x = odds_ratio, y = termo_limpo)) +
   scale_x_log10(labels = rotulo_numero(0.1)) +
   labs(
     x = "Razão de Chances ajustada (escala logarítmica, IC 95%)",
-    y = NULL
+    y = NULL,
+    caption = nota_or
   ) +
   tema()
 
 salvar_figura(grafico_or, "07_odds_ratios_logistica.png", altura_cm = 12)
 
-# ==============================================================================
-# PARTE B: VALORES SHAP (LIGHTGBM)
-# ==============================================================================
+#VALORES SHAP (LIGHTGBM) ----
 
 # Receita com codificação one-hot para extrair a matriz numérica exigida pelo lightgbm/shapviz
 receita_shap <- recipe(
@@ -185,7 +191,7 @@ grafico_shap_barras <- sv_importance(objeto_shap, kind = "bar", fill = cor_princ
 
 salvar_figura(grafico_shap_barras, "07_shap_importancia_global.png", altura_cm = 8)
 
-# Rótulos explícitos para o gráfico SHAP (indicam qual categoria corresponde à cor amarela/alta)
+# Rótulos para o gráfico SHAP
 rotulos_shap <- c(
   nu_idade_n = "Idade (anos)",
   tb_previa  = "TB prévia (Sim vs. Não)",
@@ -193,7 +199,8 @@ rotulos_shap <- c(
   agravdroga = "Uso de drogas (Sim vs. Não)",
   cs_sexo    = "Sexo (Masculino vs. Feminino)",
   agravaids  = "HIV/aids (Sim vs. Não)",
-  cs_raca    = "Raça/Cor (Não branca vs. Branca)"
+  cs_raca    = "Raça/Cor",
+  cs_zona    = "Zona de residência"
 )
 
 mapa_colunas <- map(variaveis_finais, function(var) {
@@ -225,14 +232,18 @@ grafico_shap_beeswarm <- sv_importance(objeto_shap, kind = "beeswarm", size = 1.
     x = "Valor SHAP (impacto no log-odds de Abandono)",
     y = NULL,
     color = "Valor da variável",
-    caption = "Nota: Valores à esquerda do zero indicam redução no risco e valores à direita indicam aumento no risco de Abandono."
+    caption = paste(
+      "Valores SHAP negativos reduzem e valores positivos aumentam o log-odds predito de abandono.",
+      "Nas variáveis categóricas, a cor representa a ordem dos níveis.",
+      sep = "\n"
+    )
   ) +
   tema() +
   theme(
     legend.position = "right",
     legend.title = element_text(size = 8, hjust = 0.5),
     legend.text  = element_text(size = 7.5),
-    # Centraliza o caption (frase debaixo) e dá um espaçamento elegante
+    # Centraliza a nota da figura.
     plot.caption = element_text(size = 8, color = "#555555", hjust = 0.5, margin = margin(t = 15))
   ) +
   guides(
@@ -246,14 +257,22 @@ grafico_shap_beeswarm <- sv_importance(objeto_shap, kind = "beeswarm", size = 1.
   )
 
 salvar_figura(grafico_shap_beeswarm, "07_shap_beeswarm.png", altura_cm = 10, largura_cm = 20)
-# ==============================================================================
-# 4. SALVAMENTO DAS TABELAS
-# ==============================================================================
+
+# TABELAS
 
 exportar_tabelas(
   list(
-    odds_ratios_logistica = tabela_or,
-    importancia_shap      = tabela_importancia_shap
+    odds_ratios_logistica = tabela_or |>
+      mutate(p_valor = if_else(
+        p_valor < 0.0001,
+        "< 0,0001",
+        formatar_numero(p_valor, accuracy = 0.0001)
+      )),
+    importancia_shap = tabela_importancia_shap,
+    notas = tibble(Nota = c(
+      "Limites do IC 95% indisponíveis são apresentados em branco.",
+      str_replace_all(nota_or %||% character(), stringr::fixed("\n"), " ")
+    ))
   ),
   nome_planilha = "07_interpretabilidade",
   salvar_csv = FALSE

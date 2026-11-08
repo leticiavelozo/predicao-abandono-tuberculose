@@ -217,16 +217,28 @@ saveRDS(modelos_principais,       here("resultados", "modelos", "modelos_sem_bal
 saveRDS(modelos_com_downsampling, here("resultados", "modelos", "modelos_finais_treinados.rds"))
 saveRDS(limiares_youden_cv,       here("resultados", "modelos", "limiares_youden_cv.rds"))
 
+rotulos_estrategia <- c(
+  "Sem balanceamento" = "Sem subamostragem",
+  "Com downsampling" = "Com subamostragem"
+)
+
 exportar_tabelas(
   list(
-    cv_principal_sem_bal      = tabela_cv_principal,
-    cv_artigo_com_downsampling = tabela_cv_artigo,
-    limiares_youden_cv        = limiares_youden_cv,
-    penalidade_lr_principal   = melhor_penalidade_principal,
-    penalidade_lr_artigo      = melhor_penalidade_artigo
+    cv_sem_subamostragem = tabela_cv_principal |>
+      mutate(estrategia = "Sem subamostragem", .before = modelo),
+    
+    cv_com_subamostragem = tabela_cv_artigo |>
+      mutate(estrategia = "Com subamostragem", .before = modelo),
+    
+    limiares_youden_cv = limiares_youden_cv |>
+      mutate(estrategia = unname(rotulos_estrategia[estrategia])),
+    
+    penalidade_lr_principal = melhor_penalidade_principal,
+    penalidade_lr_artigo = melhor_penalidade_artigo
   ),
   nome_planilha = "05_validacao_cruzada",
-  salvar_csv = FALSE
+  salvar_csv = FALSE,
+  colunas_sem_arredondar = "penalty"
 )
 
 message("✔ Script 05 concluído com sucesso!")

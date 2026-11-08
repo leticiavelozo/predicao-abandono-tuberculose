@@ -83,6 +83,44 @@ tabela_desempenho_teste <- bind_rows(
 ) |>
   arrange(estrategia, regra_decisao, desc(roc_auc))
 
+cenarios_destaque <- tribble(
+  ~estrategia,          ~regra_decisao,
+  "Sem balanceamento",  "Limiar de Youden (CV)",
+  "Com downsampling",   "Limiar padrão (0,50)"
+)
+
+rotulos_estrategia <- c(
+  "Sem balanceamento" = "Sem subamostragem",
+  "Com downsampling" = "Com subamostragem"
+)
+
+desempenho_exportacao <- tabela_desempenho_teste |>
+  mutate(
+    limiar_aplicado = if_else(
+      regra_decisao == "Limiar de Youden (CV)",
+      limiar_youden,
+      0.50
+    ),
+    .before = limiar_youden
+  )
+
+desempenho_resumido <- desempenho_exportacao |>
+  semi_join(cenarios_destaque, by = c("estrategia", "regra_decisao")) |>
+  arrange(desc(estrategia), desc(roc_auc)) |>
+  transmute(
+    `Cenário` = unname(rotulos_estrategia[estrategia]),
+    Modelo = modelo,
+    `Limiar aplicado` = limiar_aplicado,
+    `ROC-AUC` = roc_auc,
+    `PR-AUC` = pr_auc,
+    Brier = brier_class,
+    Sensibilidade = sens,
+    Especificidade = spec
+  )
+
+desempenho_exportacao <- desempenho_exportacao |>
+  mutate(estrategia = unname(rotulos_estrategia[estrategia]))
+
 print(tabela_desempenho_teste, n = Inf, width = Inf)
 
 # 4. Matrizes de confusão ----
@@ -95,62 +133,128 @@ matrizes_confusao <- bind_rows(
     mutate(regra_decisao = "Limiar padrão (0,50)", .before = 1)
 )
 
-# 5.1 Curva ROC (Cenário Principal — Sem balanceamento)
-dados_roc <- predicoes_principais |>
-  group_by(modelo) |>
-  roc_curve(truth = desfecho_abandono, .pred_Abandono, event_level = "second")
+# 5.1 Curvas ROC por estratégia de treino ----
 
-grafico_roc <- ggplot(dados_roc, aes(x = 1 - specificity, y = sensitivity, color = modelo, linetype = modelo)) +
-  geom_abline(lty = 2, color = cor_neutra, linewidth = 0.4) +
+predicoes_curvas <- predicoes_teste |>
+  mutate(
+    estrategia = factor(
+      estrategia,
+      levels = c("Sem balanceamento", "Com downsampling"),
+      labels = c("Sem subamostragem", "Com subamostragem")
+    )
+  )
+
+dados_roc <- predicoes_curvas |>
+  group_by(estrategia, modelo) |>
+  roc_curve(
+    truth = desfecho_abandono,
+    .pred_Abandono,
+    event_level = "second"
+  )
+
+grafico_roc <- ggplot(
+  dados_roc,
+  aes(x = 1 - specificity, y = sensitivity, color = modelo, linetype = modelo)
+) +
+  geom_abline(
+    intercept = 0, slope = 1,
+    linetype = "dashed", color = cor_neutra, linewidth = 0.4
+  ) +
   geom_path(linewidth = 0.7) +
+  facet_wrap(vars(estrategia), nrow = 1) +
   scale_color_manual(values = cores_modelos) +
   scale_linetype_manual(values = linhas_modelos) +
-  scale_x_continuous(labels = rotulo_numero(0.01)) +
-  scale_y_continuous(labels = rotulo_numero(0.01)) +
-  labs(
-    x = "1 - Especificidade (Falsos Positivos)",
-    y = "Sensibilidade (Verdadeiros Positivos)"
+  scale_x_continuous(
+    breaks = seq(0, 1, by = 0.25),
+    labels = rotulo_numero(0.01)
   ) +
-  tema()
+  scale_y_continuous(
+    breaks = seq(0, 1, by = 0.25),
+    labels = rotulo_numero(0.01)
+  ) +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+  labs(
+    x = "1 − Especificidade (taxa de falsos positivos)",
+    y = "Sensibilidade",
+    caption = paste(
+      "Ambos os painéis usam o mesmo conjunto de teste.",
+      "A subamostragem foi aplicada apenas no treino."
+    )
+  ) +
+  tema() +
+  theme(plot.caption = element_text(hjust = 0))
 
-salvar_figura(grafico_roc, "06_curva_roc_teste.png", altura_cm = 10)
+salvar_figura(
+  grafico_roc, "06_curva_roc_teste.png",
+  altura_cm = 10, largura_cm = 20
+)
 
-# 5.2 Curva Precision-Recall (Cenário Principal — Sem balanceamento)
+# 5.2 Curvas de precisão–revocação por estratégia de treino ----
+
 prevalencia_teste <- mean(tb_teste$desfecho_abandono == "Abandono")
 
-dados_pr <- predicoes_principais |>
-  group_by(modelo) |>
-  pr_curve(truth = desfecho_abandono, .pred_Abandono, event_level = "second")
+dados_pr <- predicoes_curvas |>
+  group_by(estrategia, modelo) |>
+  pr_curve(
+    truth = desfecho_abandono,
+    .pred_Abandono,
+    event_level = "second"
+  )
 
-grafico_pr <- ggplot(dados_pr, aes(x = recall, y = precision, color = modelo, linetype = modelo)) +
-  geom_hline(yintercept = prevalencia_teste, lty = 2, color = cor_neutra, linewidth = 0.4) +
+grafico_pr <- ggplot(
+  dados_pr,
+  aes(x = recall, y = precision, color = modelo, linetype = modelo)
+) +
+  geom_hline(
+    yintercept = prevalencia_teste,
+    linetype = "dashed", color = cor_neutra, linewidth = 0.4
+  ) +
   geom_path(linewidth = 0.7) +
+  facet_wrap(vars(estrategia), nrow = 1) +
   scale_color_manual(values = cores_modelos) +
   scale_linetype_manual(values = linhas_modelos) +
-  scale_x_continuous(labels = rotulo_numero(0.01)) +
-  scale_y_continuous(labels = rotulo_numero(0.01)) +
-  labs(
-    x = "Sensibilidade (Recall)",
-    y = "Valor Preditivo Positivo (Precision)"
+  scale_x_continuous(
+    breaks = seq(0, 1, by = 0.25),
+    labels = rotulo_numero(0.01)
   ) +
-  tema()
+  scale_y_continuous(
+    breaks = seq(0, 1, by = 0.25),
+    labels = rotulo_numero(0.01)
+  ) +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+  labs(
+    x = "Sensibilidade (revocação)",
+    y = "Precisão (valor preditivo positivo)",
+    caption = paste0(
+      "Ambos os painéis usam o mesmo conjunto de teste. ",
+      "A subamostragem foi aplicada apenas no treino.\n",
+      "A linha tracejada indica a proporção de abandono no teste (",
+      formatar_numero(100 * prevalencia_teste, accuracy = 0.01),
+      "%)."
+    )
+  ) +
+  tema() +
+  theme(plot.caption = element_text(hjust = 0))
 
-salvar_figura(grafico_pr, "06_curva_pr_teste.png", altura_cm = 10)
+salvar_figura(
+  grafico_pr, "06_curva_pr_teste.png",
+  altura_cm = 10, largura_cm = 20
+)
 
 # 5.3 Figura Comparativa das Matrizes de Confusão (Sem balanceamento vs. Downsampling)
 dados_grafico_matriz <- matrizes_confusao |>
-  filter(
-    (estrategia == "Sem balanceamento" & regra_decisao == "Limiar de Youden (CV)") |
-      (estrategia == "Com downsampling"  & regra_decisao == "Limiar padrão (0,50)")
-  ) |>
+  semi_join(cenarios_destaque, by = c("estrategia", "regra_decisao")) |>
   mutate(
     cenario = factor(
       if_else(
         estrategia == "Sem balanceamento",
-        "Sem balanceamento\n(Limiar de Youden)",
-        "Com downsampling\n(Limiar 0,50)"
+        "Sem subamostragem\n(Limiar de Youden)",
+        "Com subamostragem\n(Limiar 0,50)"
       ),
-      levels = c("Sem balanceamento\n(Limiar de Youden)", "Com downsampling\n(Limiar 0,50)")
+      levels = c(
+        "Sem subamostragem\n(Limiar de Youden)",
+        "Com subamostragem\n(Limiar 0,50)"
+      )
     )
   ) |>
   group_by(cenario, modelo, Verdadeiro) |>
@@ -175,7 +279,12 @@ grafico_matriz <- ggplot(dados_grafico_matriz, aes(x = Predito, y = fct_rev(Verd
   ) +
   labs(
     x = "Classe predita pelo modelo",
-    y = "Desfecho verdadeiro"
+    y = "Desfecho verdadeiro",
+    caption = paste(
+      "Contagens e percentuais por linha (classe real), em cada painel.",
+      "Os cenários diferem no balanceamento e no limiar.",
+      sep = "\n"
+    )
   ) +
   tema() +
   theme(panel.grid = element_blank(), legend.position = "none")
@@ -191,7 +300,16 @@ grafico_probabilidades <- ggplot(predicoes_teste, aes(x = .pred_Abandono, fill =
     color = "#333333",
     linewidth = 0.5
   ) +
-  facet_grid(estrategia ~ modelo, scales = "free_y") +
+  facet_grid(
+    estrategia ~ modelo,
+    scales = "free_y",
+    labeller = labeller(
+      estrategia = c(
+        "Com downsampling" = "Com\nsubamostragem",
+        "Sem balanceamento" = "Sem\nsubamostragem"
+      )
+    )
+  ) +
   scale_fill_manual(values = c("Cura" = cor_principal, "Abandono" = "#eb6834")) +
   scale_x_continuous(
     limits = c(0, 1),
@@ -200,15 +318,18 @@ grafico_probabilidades <- ggplot(predicoes_teste, aes(x = .pred_Abandono, fill =
   ) +
   scale_y_continuous(labels = rotulo_numero(0.1)) +
   labs(
-    x = "Probabilidade predita de Abandono (linha tracejada = limiar de Youden)",
-    y = "Densidade"
+    x = "Probabilidade predita de abandono",
+    y = "Densidade",
+    caption = paste(
+      "A subamostragem da classe majoritária foi aplicada apenas no treino.",
+      "As linhas tracejadas indicam o limiar de Youden de cada modelo nos dois cenários.",
+      sep = "\n"
+    )
   ) +
   tema() +
   theme(panel.spacing.x = unit(0.6, "cm"))
 
 salvar_figura(grafico_probabilidades, "06_distribuicao_probabilidades.png", altura_cm = 10.5)
-
-salvar_figura(grafico_probabilidades, "06_distribuicao_probabilidades.png", altura_cm = 10)
 
 # 6. Salvamento dos resultados e tabelas ----
 saveRDS(predicoes_teste,         here("dados", "intermediarios", "predicoes_teste.rds"))
@@ -216,8 +337,10 @@ saveRDS(tabela_desempenho_teste, here("resultados", "modelos", "tabela_desempenh
 
 exportar_tabelas(
   list(
-    desempenho_teste  = tabela_desempenho_teste,
-    matrizes_confusao = matrizes_confusao
+    desempenho_resumido = desempenho_resumido,
+    desempenho_teste = desempenho_exportacao,
+    matrizes_confusao = matrizes_confusao |>
+      mutate(estrategia = unname(rotulos_estrategia[estrategia]))
   ),
   nome_planilha = "06_avaliacao_teste",
   salvar_csv = FALSE

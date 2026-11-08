@@ -162,18 +162,21 @@ grafico_rfecv <- ggplot(desempenho_auc, aes(x = n_variaveis, y = media)) +
   geom_point(data = melhor_ponto, color = "#eb6834", size = 3) +
   geom_text(
     data = melhor_ponto,
-    aes(label = paste0(n_variaveis, " variáveis\n(selecionado)")),
-    nudge_x = 0.6,
-    hjust = 0,
+    aes(y = media + erro_padrao, label = paste0(n_variaveis, " variáveis\n(selecionado)")),
+    vjust = -0.6,
     size = 3,
     lineheight = 0.9,
     color = "#333333"
   ) +
   scale_x_continuous(breaks = unique(desempenho_auc$n_variaveis)) +
-  scale_y_continuous(labels = rotulo_numero(0.001)) +
+  scale_y_continuous(
+    labels = rotulo_numero(0.001),
+    expand = expansion(mult = c(0.05, 0.18))
+  ) +
   labs(
     x = "Número de variáveis",
-    y = "ROC-AUC médio na validação cruzada"
+    y = "ROC-AUC média na validação cruzada",
+    caption = "Barras de erro representam ±1 erro-padrão da média entre os folds."
   ) +
   tema() +
   theme(panel.grid.major.x = element_blank())
