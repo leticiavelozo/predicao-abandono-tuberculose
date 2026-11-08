@@ -41,7 +41,7 @@ A implementação foi desenvolvida em linguagem R (`tidymodels`) e aplicada a um
 
 3. **Seleção de atributos** (`04`)
    - Avaliação de 12 preditores candidatos disponíveis na notificação.
-   - RFECV com Random Forest via validação cruzada estratificada de 10 folds para identificar o subconjunto ideal de **7 variáveis** (`nu_idade_n`, `cs_sexo`, `cs_raca`, `cs_zona`, `agravalcoo`, `agravdroga`, `agravaids`, `tb_previa`), mitigando o impacto de variáveis com alta taxa de dados ausentes como escolaridade e tabagismo.
+   - RFECV com Random Forest via validação cruzada estratificada de 10 folds para identificar o subconjunto ideal de **7 variáveis** (`nu_idade_n`, `cs_sexo`, `cs_raca`, `agravalcoo`, `agravdroga`, `agravaids`, `tb_previa`), mitigando o impacto de variáveis com alta taxa de dados ausentes como escolaridade e tabagismo.
 
 4. **Treinamento e cenários experimentais** (`05`)
    - Ajuste de três algoritmos via `tidymodels`: Regressão Logística LASSO (`glmnet`), Random Forest (`ranger`) e LightGBM (`bonsai`).
