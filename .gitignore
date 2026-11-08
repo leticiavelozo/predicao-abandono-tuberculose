@@ -1,0 +1,26 @@
+# Dados 
+dados/brutos/*
+!dados/brutos/.gitkeep
+dados/intermediarios/*
+!dados/intermediarios/.gitkeep
+dados/processados/*
+!dados/processados/.gitkeep
+
+# Modelos treinados são mantidos (pasta leve)
+# resultados/modelos/* foi removido para permitir o envio
+
+# Documentação local não versionada
+documentos/
+
+# Ficheiros temporários do R
+.Rhistory
+.RData
+.Ruserdata
+.RDataTmp*
+
+# Configurações do RStudio
+.Rproj.user/
+
+# Ficheiros do sistema
+.DS_Store
+Thumbs.db
