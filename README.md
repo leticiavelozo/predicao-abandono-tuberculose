@@ -91,18 +91,25 @@ Cada script foi projetado para rodar de forma independente em uma sessão limpa 
 
 ## Dados
 
-Os microdados utilizados neste projeto são públicos e anonimizados, provenientes do Portal de Dados Abertos do Estado de Minas Gerais:
+Os dados utilizados neste projeto são públicos e anonimizados, provenientes do Portal de Dados Abertos do Estado de Minas Gerais:
 
 - Conjunto de dados: [Dados de Tuberculose — Portal de Dados Abertos de Minas Gerais](https://dados.mg.gov.br/dataset/dados-tuberculose)
 - Instituição responsável: Secretaria de Estado de Saúde de Minas Gerais (SES-MG)
 - Unidade técnica: Diretoria de Vigilância de Condições Crônicas
-- Formato: CSV (;) e metadados em datapackage.json
+- Formato: CSV com separador ponto e vírgula (;) e metadados em datapackage.json
+- Data de download do CSV utilizado na análise: 25/08/2026
+- SHA-256 do CSV utilizado: 8D6FD5547642DDEEFE76D86631518EBBF5D2B732854B6E2A1700D037BF60861E
 
-Devido ao tamanho do arquivo, a base bruta não é versionada no Git. Para reproduzir o pipeline localmente, baixe o arquivo CSV na fonte oficial e salve-o em:
+A base bruta não é versionada neste repositório. Para executar o pipeline com os dados atualmente disponíveis, baixe o CSV na fonte oficial e salve-o no caminho abaixo, relativo à raiz do projeto.
 
 ```text
 dados/brutos/dados_tuberculose.csv
 ```
+Reprodução dos resultados
+
+A reprodução exata dos resultados apresentados no TCC depende da cópia do CSV baixada em 25/08/2026. O SHA-256 permite verificar se uma cópia corresponde ao arquivo utilizado nas análises.
+
+Na página pública do conjunto, não foi localizada uma opção para baixar versões anteriores do CSV. Como o portal atualiza a base, uma nova extração pode apresentar diferenças no número de notificações e no preenchimento dos encerramentos, inclusive para os mesmos anos de notificação. Essas diferenças podem alterar a composição da amostra, as estatísticas descritivas e as métricas de desempenho dos modelos.
 
 ## Referência metodológica
 
