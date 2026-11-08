@@ -86,6 +86,7 @@ scripts/
 ├── 05_treinamento_modelos.R        # regressão logística LASSO, Random Forest e LightGBM
 ├── 06_avaliacao_teste.R            # métricas, curvas ROC/PR, Brier e matrizes comparativas
 └── 07_interpretabilidade.R         # odds ratios (broom) e valores SHAP agrupados
+```
 
 Cada script foi projetado para rodar de forma independente em uma sessão limpa do R, lendo os artefatos .rds produzidos pela etapa imediatamente anterior. Caso utilize gerenciamento de ambiente com renv, execute renv::restore() antes da primeira execução.
 
