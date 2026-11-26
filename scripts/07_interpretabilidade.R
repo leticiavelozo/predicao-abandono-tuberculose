@@ -3,7 +3,7 @@
 # Arquivo: scripts/07_interpretabilidade.R
 # Objetivo:
 # - Estimar Razões de Chances (Odds Ratios) via Regressão Logística (GLM)
-# - Calcular valores SHAP do LightGBM agrupados pelas 8 variáveis originais
+# - Calcular valores SHAP do LightGBM agrupados pelas 7 variáveis 
 # - Gerar gráficos de interpretabilidade (Forest Plot e gráficos SHAP)
 # ==============================================================================
 
@@ -82,7 +82,7 @@ tabela_or <- tidy(modelo_glm, exponentiate = TRUE, conf.int = TRUE) |>
 
 print(tabela_or, n = Inf)
 
-# Figura 1: Forest Plot das Razões de Chances (excluindo categorias "Sem informação" para limpeza visual, ou mantendo todas)
+# Figura 1: Forest Plot das Razões de Chances 
 nota_or <- if ("cs_sexoSem informação" %in% tabela_or$termo) {
   "Sexo sem informação foi omitido do gráfico por instabilidade da estimativa.\nO termo consta na tabela completa."
 } else {
@@ -164,7 +164,7 @@ mapa_colunas <- map(variaveis_finais, function(var) {
 })
 names(mapa_colunas) <- unname(rotulos_variaveis[variaveis_finais])
 
-# Colapsa (soma) os valores SHAP das dummies dentro de cada variável original
+# soma os valores SHAP das dummies dentro de cada variável original
 Dados_teste_originais <- tb_teste |>
   select(all_of(variaveis_finais)) |>
   mutate(across(where(is.character), ~ replace_na(.x, "Sem informação"))) |>
@@ -225,7 +225,7 @@ Dados_teste_originais <- tb_teste |>
 shap_agrupado <- collapse_shap(shap_bruto$S, collapse = mapa_colunas)
 objeto_shap   <- shapviz(shap_agrupado, X = Dados_teste_originais)
 
-# Figura 3: Resumo de Impacto SHAP (Beeswarm limpo e sem sobreposições)
+# Figura 3: Resumo de Impacto SHAP 
 grafico_shap_beeswarm <- sv_importance(objeto_shap, kind = "beeswarm", size = 1.2) +
   scale_x_continuous(labels = rotulo_numero(0.1)) +
   labs(
@@ -243,7 +243,6 @@ grafico_shap_beeswarm <- sv_importance(objeto_shap, kind = "beeswarm", size = 1.
     legend.position = "right",
     legend.title = element_text(size = 8, hjust = 0.5),
     legend.text  = element_text(size = 7.5),
-    # Centraliza a nota da figura.
     plot.caption = element_text(size = 8, color = "#555555", hjust = 0.5, margin = margin(t = 15))
   ) +
   guides(
